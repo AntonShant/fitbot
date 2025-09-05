@@ -16,12 +16,7 @@ jobs:
       - name: Preparar booking-goals (JSON válido)
         run: |
           echo '${{ secrets.BOOKING_GOALS }}' > goals.json
-          python - <<'PY'
-import json
-j = open('goals.json','r',encoding='utf-8').read()
-json.loads(j)
-print("OK: goals.json es JSON válido")
-PY
+          python -c "import json,sys; json.loads(open('goals.json','r',encoding='utf-8').read()); print('OK: goals.json es JSON válido')"
 
       - name: Diagnóstico HTTP (comprobar 403 vs 200)
         run: |
