@@ -1,22 +1,46 @@
-name: Push docker image to registry (hub.docker.com)
+name: FitBot (cloud)
 
 on:
-  push:
-    branches:
-      - 'master'
+  schedule:
+    - cron: "55 7 * * 1-5"   # 09:55 Madrid (07:55 UTC)
+    - cron: "00 8 * * 1-5"   # 10:00 Madrid (08:00 UTC)
+    - cron: "05 8 * * 1-5"   # 10:05 Madrid (08:05 UTC)
+  workflow_dispatch: {}       # Botón "Run workflow"
 
 jobs:
-  docker:
+  run:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+
     steps:
-      - name: Login to DockerHub
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      -
-        name: Build and push
-        uses: docker/build-push-action@v2
-        with:
-          push: true
-          tags: pablobuenaposada/fitbot:latest
+      - name: Preparar booking-goals (JSON válido)
+        run: |
+          echo '${{ secrets.BOOKING_GOALS }}' > goals.json
+          python -c "import json,sys; json.loads(open('goals.json','r',encoding='utf-8').read()); print('OK: goals.json es JSON válido')"
+
+      - name: Diagnóstico HTTP (comprobar 403 vs 200 con proxy)
+        run: |
+          echo "Sin proxy -> código HTTP:"
+          curl -I -s -o /dev/null -w "%{http_code}\n" https://aimharder.com/login || true
+          echo "Con proxy -> código HTTP:"
+          if [ -n "${{ secrets.PROXY }}" ]; then
+            curl -I -s -o /dev/null -w "%{http_code}\n" -x "${{ secrets.PROXY }}" https://aimharder.com/login || true
+          else
+            echo "No hay PROXY definido"
+          fi
+
+      # Importante: NO exportamos HTTP(S)_PROXY en el contenedor para que uv/pip puedan ir a PyPI.
+      # El proxy solo se pasa al script vía --proxy.
+      - name: Ejecutar fitbot (proxy solo para AimHarder)
+        run: |
+          docker run --rm \
+            --entrypoint uv \
+            pablobuenaposada/fitbot:latest \
+            run python src/main.py \
+              --email="${{ secrets.EMAIL }}" \
+              --password="${{ secrets.PASSWORD }}" \
+              --booking-goals="$(cat goals.json)" \
+              --box-name="${{ secrets.BOX_NAME }}" \
+              --box-id="${{ secrets.BOX_ID }}" \
+              --days-in-advance="${{ secrets.DAYS_IN_ADVANCE }}" \
+              --proxy="${{ secrets.PROXY }}"
