@@ -2,9 +2,14 @@ name: FitBot (cloud)
 
 on:
   schedule:
-    - cron: "55 7 * * 1-5"   # 09:55 Madrid (07:55 UTC)
-    - cron: "00 8 * * 1-5"   # 10:00 Madrid (08:00 UTC)
-    - cron: "05 8 * * 1-5"   # 10:05 Madrid (08:05 UTC)
+# Verano (Madrid = UTC+2): 10:00 Madrid => 08:00 UTC (+ reintentos)
+    - cron: "59 7 * * *"
+    - cron: "00 8 * * *"
+    - cron: "01 8 * * *"
+    # Invierno (Madrid = UTC+1): 10:00 Madrid => 09:00 UTC (+ reintentos)
+    - cron: "59 8 * * *"
+    - cron: "00 9 * * *"
+    - cron: "01 9 * * *"
   workflow_dispatch: {}
 
 jobs:
